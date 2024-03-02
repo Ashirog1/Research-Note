@@ -28,9 +28,8 @@ def run_Q_learning(data_cpp:np.ndarray):
     # create seed edge list
     # for idx in len(data_tsp):
     greedy_route = compute_greedy_route(Q_table)
-    print(greedy_route)
-        # greedy_cost = route_distance(greedy_route, data_tsp) - data_cpp[idx][2]
-        # print(greedy_route, greedy_cost)
+    greedy_cost = route_distance(greedy_route, data_tsp)
+    print(greedy_route, greedy_cost)
 
     
 

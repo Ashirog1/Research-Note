@@ -78,7 +78,7 @@ def custom_argmax(Q_table: np.ndarray, row: int, mask: np.ndarray):
 
 
 @njit
-def compute_greedy_route(Q_table: np.ndarray, depot: int):
+def compute_greedy_route(Q_table: np.ndarray):
     """Computes greedy route based on Q values
 
     Args:
@@ -90,7 +90,7 @@ def compute_greedy_route(Q_table: np.ndarray, depot: int):
     N = Q_table.shape[0]
     mask = np.array([True] * N)
     route = np.zeros((N,))
-    mask[depot] = False
+    mask[0] = False
     for i in range(1, N):
         # Iteration i : choosing ith city to visit, knowing the past
         current = route[i - 1]
@@ -102,8 +102,8 @@ def compute_greedy_route(Q_table: np.ndarray, depot: int):
 
 
 @njit
-def compute_value_of_q_table(Q_table: np.ndarray, distances: np.ndarray, depot:int):
-    greedy_route = compute_greedy_route(Q_table, depot)
+def compute_value_of_q_table(Q_table: np.ndarray, distances: np.ndarray):
+    greedy_route = compute_greedy_route(Q_table)
     return route_distance(greedy_route, distances)
 
 
@@ -147,18 +147,23 @@ def write_overall_results(res: dict, data: dict, tag: str):
         f.write(str(table))
 
 
-def transform_cpp_to_tsp(weighted_edge_list:np.ndarray) -> np.ndarray:
+def transform_cpp_to_tsp(weighted_edge_list: np.ndarray) -> np.ndarray:
     N = 0
     for idx, edge in enumerate(weighted_edge_list):
         u, v, w = edge
-        if (N < u):
+        if N < u:
             N = u
-        if (N < v):
+        if N < v:
             N = v
-    
-    edge_adj_list = [ [ 10**2 for i in range(len(weighted_edge_list)) ] for j in range(len(weighted_edge_list)) ]
 
-    for i in range(len(weighted_edge_list)):
+    edge_adj_list = [
+        [10**10 for i in range(len(weighted_edge_list) + 1)]
+        for j in range(len(weighted_edge_list) + 1)
+    ]
+
+    N = len(edge_adj_list)
+
+    for i in range(N):
         edge_adj_list[i][i] = 0
 
     adj_list = [[] for i in range(N + 1)]
@@ -166,18 +171,35 @@ def transform_cpp_to_tsp(weighted_edge_list:np.ndarray) -> np.ndarray:
 
     for idx, edge in enumerate(weighted_edge_list):
         u, v, w = edge
-        adj_list[u].append(idx)
-        adj_list[v].append(idx)
-    
+        adj_list[u].append(idx + 1)
+        adj_list[v].append(idx + 1)
 
+    for src_edge in adj_list[1]:
+        u, v, w = weighted_edge_list[src_edge - 1]
+        edge_adj_list[0][src_edge] = w
+        edge_adj_list[src_edge][0] = 0
+    
     for src_edge in range(len(weighted_edge_list)):
-        u, v, w = weighted_edge_list[src_edge]
+        u, v, w = weighted_edge_list[src_edge - 1]
         for adj_edge in adj_list[u]:
-            if (adj_edge != src_edge):
+            u1, v1, w1 = weighted_edge_list[adj_edge - 1]
+            if adj_edge != src_edge:
+                if (u == 1 or v == 1):
+                    if (u1 == 1 or v1 == 1):
+                        continue
                 edge_adj_list[adj_edge][src_edge] = w
 
         for adj_edge in adj_list[v]:
-            if (adj_edge != src_edge):
+            u1, v1, w1 = weighted_edge_list[adj_edge - 1]
+            if adj_edge != src_edge:
+                if (u == 1 or v == 1):
+                    if (u1 == 1 or v1 == 1):
+                        continue
                 edge_adj_list[adj_edge][src_edge] = w
+    for k in range(N):
+        for i in range(N):
+            for j in range(N):
+                if edge_adj_list[i][k] + edge_adj_list[k][j] < edge_adj_list[i][j]:
+                    edge_adj_list[i][j] = edge_adj_list[i][k] + edge_adj_list[k][j]
 
     return np.array(edge_adj_list)

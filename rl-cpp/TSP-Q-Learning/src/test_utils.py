@@ -48,8 +48,10 @@ def test_custom_argmax(fix_mask, fix_Q):
 
 def test_cpp_to_tsp():
     square = [(1,2,1), (2,3,1), (3,4,1), (4,1,1)]
+    
+    adj = transform_cpp_to_tsp(square)
 
-    adj, _ = transform_cpp_to_tsp(square)
+    print(adj)
 
-    print(adj, _)
 
+test_cpp_to_tsp()
